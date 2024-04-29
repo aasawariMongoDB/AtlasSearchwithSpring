@@ -1,5 +1,6 @@
 package com.atlasseach.atlasSearch.service;
 
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Facet;
@@ -12,6 +13,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -123,33 +125,40 @@ public class MovieAtlasSearchService {
                 .first();
     }
 
-    public Document genresThroughTheDecades(String genre) {
-        List<Bson> pipeline = List.of(
-                searchMeta(
-                        (SearchOperator) facet(
-                                (Facet) text(
-                                        fieldPath("genres"), genre
-                                ),
-                                (Facet) asList(
-                                        new StringSearchFacet[]{stringFacet("genresFacet",
-                                                fieldPath("genres")
-                                        ).numBuckets(5)},
-                                        numberFacet("yearFacet",
-                                                fieldPath("year"),
-                                                asList(1900, 1930, 1960, 1990, 2020)
-                                        )
-                                )
-                        ),
-                        searchOptions()
-                                .index("testIndex02")
-                )
+    public List<Document> genresThroughTheDecades(String genre) {
+        List<Bson> pipeline = Arrays.asList(
+                new Document("$search",
+                        new Document("index", "testIndex02")
+                                .append("compound",
+                                        new Document("should", Arrays.asList(
+                                                new Document("text",
+                                                        new Document("query", "horror")
+                                                                .append("path", "genres")))))),
+                new Document("$facet",
+                        new Document("genresFacet", Arrays.asList(
+                                new Document("$sortByCount", "$genres"),
+                                new Document("$limit", 5L)))
+                                .append("yearFacet", Arrays.asList(
+                                        new Document("$bucket",
+                                                new Document("groupBy", "$year")
+                                                        .append("boundaries", Arrays.asList(1900L, 1930L, 1960L, 1990L, 2020L))
+                                                        .append("default", "other")
+                                                        .append("output",
+                                                                new Document("count",
+                                                                        new Document("$sum", 1L))))))),
+                new Document("$limit", 1L)
         );
+        AggregateIterable<Document> aggregationResult = collection.aggregate(pipeline);
+        List<Document> resultList = new ArrayList<>();
 
-        return collection.aggregate(pipeline)
-                .first();
+        // Iterate over the aggregation result and add documents to the list
+        for (Document document : aggregationResult) {
+            resultList.add(document);
+        }
+        return resultList;
     }
 
-    public Document late90sMovies2(int skip, int limit, String keywords) {
+    public Collection<Document> late90sMovies2(int skip, int limit, String keywords) {
         List<Bson> pipeline = asList(
                 search(
                         compound()
@@ -178,6 +187,6 @@ public class MovieAtlasSearchService {
                 )
         );
         return collection.aggregate(pipeline)
-                .first();
+                .into(new ArrayList<>());
     }
 }
