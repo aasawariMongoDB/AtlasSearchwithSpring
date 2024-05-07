@@ -56,8 +56,8 @@ public class MovieAtlasSearchService {
                 search(
                         compound()
                                 .must(List.of(numberRange(
-                                                fieldPath("year"))
-                                                .gteLt(1995, 2000)
+                                        fieldPath("year"))
+                                        .gteLt(1995, 2000)
                                 )).should(List.of(
                                         text(fieldPath("fullplot"), keywords
                                         )
@@ -189,4 +189,51 @@ public class MovieAtlasSearchService {
         return collection.aggregate(pipeline)
                 .into(new ArrayList<>());
     }
+    public ArrayList<Document> searchMoviesWithIncompleteKeyword(String keywords) {
+        List<Document> Query = Arrays.asList(new Document("$search",
+                        new Document("index", "testIndex03")
+                                .append("text",
+                                        new Document("query", keywords)
+                                                .append("path", "fullplot"))),
+                new Document("$project",
+                        new Document("year", 1L)
+                                .append("fullplot", 1L)
+                                .append("imdb.rating", 1L)
+                                .append("title", 1L)),
+                new Document("$limit", 5L));
+        return collection.aggregate(Query).into(new ArrayList<>());
+    }
+
+    public ArrayList<Document> searchWithMisspelledTitle(String keyword){
+        List<Document> result = Arrays.asList(new Document("$search",
+                        new Document("index", "testIndex03")
+                                .append("text",
+                                        new Document("query", keyword)
+                                                .append("path", "title")
+                                                .append("fuzzy",
+                                                        new Document("maxEdits", 2L)
+                                                                .append("maxExpansions", 100L)))),
+                new Document("$project",
+                        new Document("title", 1L)
+                                .append("cast", 1L)));
+        return collection.aggregate(result).into(new ArrayList<>());
+    }
+
+    public ArrayList<Document> searchWithSynonyms(String keyword){
+        List<Document> result = Arrays.asList(new Document("$search",
+                        new Document("index", "testIndex04")
+                                .append("text",
+                                        new Document("path", "fullplot")
+                                                .append("query", keyword)
+                                                .append("synonyms", "synonymName"))),
+                new Document("$limit", 10L),
+                new Document("$project",
+                        new Document("_id", 0L)
+                                .append("title", 1L)
+                                .append("fullplot", 1L)
+                                .append("score",
+                                        new Document("$meta", "searchScore"))));
+        return collection.aggregate(result).into(new ArrayList<>());
+    }
+
 }
