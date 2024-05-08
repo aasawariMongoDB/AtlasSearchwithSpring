@@ -79,7 +79,7 @@ public class AtlasSearchApplication {
 							)
 					)));
 
-			collection.createSearchIndexes(Arrays.asList( indexFlour));
+			collection.createSearchIndexes(Arrays.asList( indexOne, indexTwo, indexThree, indexFlour));
             System.out.println("Wait for some time for indexes to be created. ");
 			// Wait for 3 mins to let Atlas Create the indexes.
 			Thread.sleep(300000);
@@ -120,10 +120,10 @@ public class AtlasSearchApplication {
 
 
 			//Dropping index after execution.
-			collection.dropSearchIndex("testIndex01");
-			collection.dropSearchIndex("testIndex02");
-			collection.dropSearchIndex("testIndex03");
-			collection.dropSearchIndex("testIndex04");
+//			collection.dropSearchIndex("testIndex01");
+//			collection.dropSearchIndex("testIndex02");
+//			collection.dropSearchIndex("testIndex03");
+//			collection.dropSearchIndex("testIndex04");
 
 		} catch (InterruptedException e) {
 			throw new RuntimeException(e);
